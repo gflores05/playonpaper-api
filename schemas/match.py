@@ -26,6 +26,6 @@ class CreateMatch(BaseModel):
     players: list[int]
 
 
-class UpdateGame(BaseModel):
+class UpdateMatch(BaseModel):
     winner_id: Optional[int]
     state: dict
