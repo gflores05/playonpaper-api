@@ -12,6 +12,10 @@ def get_by_name(db: Session, name: str):
     return db.query(Player).filter(Player.name == name).first()
 
 
+def get_many(db: Session, player_ids: list[int]):
+    return db.query(Player).filter(Player.id.in_(player_ids)).all()
+
+
 def get_all(db: Session):
     return db.query(Player).all()
 

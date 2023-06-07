@@ -3,8 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from player import Player
-from game import Game
+from .player import Player
+from .game import Game
 
 
 class Match(BaseModel):
@@ -12,7 +12,7 @@ class Match(BaseModel):
     start_date: datetime
     end_date: Optional[datetime]
     state: Optional[dict]
-    players: list[Player]
+    players: list[int]
     winner: Optional[Player]
     game: Game
 
