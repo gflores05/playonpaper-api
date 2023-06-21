@@ -1,19 +1,22 @@
 from sqlalchemy.orm import Session
 
 from models import Match
-from schemas.match import CreateMatch, UpdateMatch
 
 
 def get(db: Session, id: int):
     return db.query(Match).filter(Match.id == id).first()
 
 
+def get_first_by(db: Session, **filter):
+    return db.query(Match).filter_by(**filter).first()
+
+
 def get_all(db: Session):
     return db.query(Match).all()
 
 
-def create(db: Session, match: CreateMatch):
-    db_match = Match(**match.dict())
+def create(db: Session, match: dict):
+    db_match = Match(**match)
     db.add(db_match)
     db.commit()
     db.refresh(db_match)
@@ -21,8 +24,8 @@ def create(db: Session, match: CreateMatch):
     return db_match
 
 
-def update(db: Session, id: int, match: UpdateMatch):
-    db.query(Match).filter(Match.id == id).update(match.dict())
+def update(db: Session, id: int, match: dict):
+    db.query(Match).filter(Match.id == id).update(match)
     db.commit()
 
     db_match = get(db, id)

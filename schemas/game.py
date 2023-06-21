@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class Game(BaseModel):
     id: int
     name: str
-    code: str
+    slug: str
     configuration: dict
     date_created: datetime
     date_updated: Optional[datetime]
@@ -18,7 +18,7 @@ class Game(BaseModel):
 
 class CreateGame(BaseModel):
     name: str
-    code: str
+    slug: Optional[str]
     configuration: dict
 
 

@@ -12,7 +12,8 @@ class Match(BaseModel):
     start_date: datetime
     end_date: Optional[datetime]
     state: Optional[dict]
-    players: list[int]
+    players: dict
+    code: str
     winner: Optional[Player]
     game: Game
 
@@ -20,12 +21,18 @@ class Match(BaseModel):
         orm_mode = True
 
 
+class PlayerMatch(BaseModel):
+    name: str
+    state: dict
+
+
 class CreateMatch(BaseModel):
     state: dict
     game_id: int
-    players: list[int]
+    challenger: PlayerMatch
 
 
 class UpdateMatch(BaseModel):
     winner_id: Optional[int]
+    players: Optional[dict]
     state: dict
