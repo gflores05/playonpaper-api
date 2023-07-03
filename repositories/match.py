@@ -7,8 +7,8 @@ def get(db: Session, id: int):
     return db.query(Match).filter(Match.id == id).first()
 
 
-def get_first_by(db: Session, **filter):
-    return db.query(Match).filter_by(**filter).first()
+def find(db: Session, **filter):
+    return db.query(Match).filter_by(**filter).all()
 
 
 def get_all(db: Session):

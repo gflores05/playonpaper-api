@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class Game(BaseModel):
+class GameResponse(BaseModel):
     id: int
     name: str
     slug: str
@@ -16,12 +16,12 @@ class Game(BaseModel):
         orm_mode = True
 
 
-class CreateGame(BaseModel):
+class CreateGameRequest(BaseModel):
     name: str
     slug: Optional[str]
     configuration: dict
 
 
-class UpdateGame(BaseModel):
+class UpdateGameRequest(BaseModel):
     name: str
     configuration: dict

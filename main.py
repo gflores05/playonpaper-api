@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from connections.database import engine
 from models import Base
 from routers import games, players, match
-from ws_routers import chat
+from ws_routers import chat, match as ws_match
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,6 +24,7 @@ app.include_router(games.router)
 app.include_router(players.router)
 app.include_router(match.router)
 app.include_router(chat.router)
+app.include_router(ws_match.router)
 
 
 @app.get("/")

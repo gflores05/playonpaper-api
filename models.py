@@ -46,6 +46,7 @@ class Match(Base):
     game_id = Column(Integer, ForeignKey("game.id"), nullable=False)
     players = Column(JSONB, nullable=False)
     state = Column(JSONB)
+    status = Column(String, nullable=False, server_default="IDLE")
     code = Column(String, unique=True, index=True, nullable=False)
     start_date = Column(DateTime, server_default=func.now(), nullable=False)
     end_date = Column(DateTime, onupdate=func.now())

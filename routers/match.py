@@ -1,6 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
+from connections.websockets import BroadcastConnectionManager, get_game_ws_manager
 
-from schemas.match import CreateMatch, UpdateMatch, Match
+from schemas.match import (
+    CreateMatchRequest,
+    CreateMatchResponse,
+    UpdateMatchResponse,
+    UpdateMatchRequest,
+    MatchResponse,
+)
 from services.match_service import (
     CreateMatchException,
     MatchNotFoundException,
@@ -16,12 +23,15 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=list[Match])
-async def get_all(service: MatchService = Depends(get_match_service)):
-    return service.get_all()
+@router.get("/", response_model=list[MatchResponse])
+async def get_all(req: Request, service: MatchService = Depends(get_match_service)):
+    if len(req.query_params.keys()) == 0:
+        return service.get_all()
+    else:
+        return service.find(**req.query_params)
 
 
-@router.get("/{id}", response_model=Match)
+@router.get("/{id}", response_model=MatchResponse)
 async def get_by_id(id: int, service: MatchService = Depends(get_match_service)):
     try:
         return service.get_by_id(id)
@@ -29,19 +39,30 @@ async def get_by_id(id: int, service: MatchService = Depends(get_match_service))
         raise HTTPException(status_code=404, detail=error.message)
 
 
-@router.post("/", response_model=Match)
-def create(match: CreateMatch, service: MatchService = Depends(get_match_service)):
+@router.post("/", response_model=CreateMatchResponse)
+def create(
+    match: CreateMatchRequest, service: MatchService = Depends(get_match_service)
+):
     try:
         return service.create(match)
     except CreateMatchException as error:
         raise HTTPException(status_code=400, detail=error.message)
 
 
-@router.patch("/{id}", response_model=Match)
+@router.patch("/{code}", response_model=UpdateMatchResponse)
 def update(
-    id: int, match: UpdateMatch, service: MatchService = Depends(get_match_service)
+    code: str,
+    match: UpdateMatchRequest,
+    service: MatchService = Depends(get_match_service),
+    match_ws_manager: BroadcastConnectionManager = Depends(get_game_ws_manager),
 ):
     try:
-        return service.update(id, match)
+        updated = service.update(code, match)
+
+        match_ws_manager.broadcast(
+            updated.code, match.player, {"event": match.event.name}
+        )
+
+        return updated
     except UpdateMatchException as error:
         raise HTTPException(status_code=400, detail=error.message)
