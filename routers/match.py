@@ -60,12 +60,10 @@ async def update(
     try:
         updated = service.update(code, match)
 
-        if match.event == MatchUpdateEvent.STATE_UPDATE:
-            await match_ws_manager.broadcast(
-                updated.code,
-                match.player,
-                {"event": MatchUpdateEvent.STATE_UPDATE, "data": updated},
-            )
+        await match_ws_manager.broadcast_all(
+            updated.code,
+            {"event": MatchUpdateEvent.STATE_UPDATE.value, "data": updated.dict()},
+        )
 
         return updated
     except UpdateMatchException as error:
