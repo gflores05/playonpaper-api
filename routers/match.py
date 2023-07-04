@@ -4,6 +4,7 @@ from connections.websockets import BroadcastConnectionManager, get_game_ws_manag
 from schemas.match import (
     CreateMatchRequest,
     CreateMatchResponse,
+    MatchUpdateEvent,
     UpdateMatchResponse,
     UpdateMatchRequest,
     MatchResponse,
@@ -50,7 +51,7 @@ def create(
 
 
 @router.patch("/{code}", response_model=UpdateMatchResponse)
-def update(
+async def update(
     code: str,
     match: UpdateMatchRequest,
     service: MatchService = Depends(get_match_service),
@@ -59,9 +60,12 @@ def update(
     try:
         updated = service.update(code, match)
 
-        match_ws_manager.broadcast(
-            updated.code, match.player, {"event": match.event.name}
-        )
+        if match.event == MatchUpdateEvent.STATE_UPDATE:
+            await match_ws_manager.broadcast(
+                updated.code,
+                match.player,
+                {"event": MatchUpdateEvent.STATE_UPDATE, "data": updated},
+            )
 
         return updated
     except UpdateMatchException as error:
