@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime
 
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -10,9 +11,9 @@ from repositories import (
 )
 from schemas.match import (
     CreateMatchRequest,
-    CreateMatchResponse,
-    MatchUpdateEvent,
-    UpdateMatchResponse,
+    JoinMatchRequest,
+    JoinMatchResponse,
+    MatchStatus,
     UpdateMatchRequest,
 )
 
@@ -38,6 +39,13 @@ class UpdateMatchException(Exception):
         self.message = message
 
 
+class JoinMatchException(Exception):
+    message = ""
+
+    def __init__(self, code):
+        self.message = f"You are not allowed to join match with code: {code}"
+
+
 class MatchService:
     db: Session
 
@@ -58,11 +66,11 @@ class MatchService:
     def find(self, **filter):
         return match_repository.find(self.db, **filter)
 
-    def create(self, match: CreateMatchRequest):
-        game = game_repository.get(self.db, match.game_id)
+    def create(self, payload: CreateMatchRequest):
+        game = game_repository.get(self.db, payload.game_id)
 
         if game is None:
-            raise CreateMatchException(f"Game with id {match.game_id} not found")
+            raise CreateMatchException(f"Game with id {payload.game_id} not found")
 
         code_exists = True
 
@@ -72,70 +80,75 @@ class MatchService:
 
             code_exists = len(existing_match) > 0
 
-        pmp = secrets.token_hex(16)
-
-        challenger = {**match.challenger.dict(), "pmp": pmp}
-
         new_match = {
-            "game_id": match.game_id,
+            "game_id": payload.game_id,
             "code": code,
-            "state": match.state,
-            "players": {match.challenger.name: challenger},
+            "state": payload.state,
+            "status": MatchStatus.WAITING.value,
+            "players": {},
         }
 
-        match_repository.create(self.db, new_match)
+        return match_repository.create(self.db, new_match)
 
-        return CreateMatchResponse(code=code, pmp=pmp)
-
-    def update(self, code: str, match: UpdateMatchRequest):
+    def get_by_code(self, code: str):
         db_match = match_repository.find(self.db, code=code)
 
         if len(db_match) == 0:
             raise UpdateMatchException(f"Match with code {code} doesn't exist")
 
-        db_match = db_match[0]
+        return db_match[0]
 
-        if match.winner_id is not None and match.winner_id not in [
+    def join(self, code: str, payload: JoinMatchRequest):
+        db_match = self.get_by_code(code)
+
+        if payload.player.name not in db_match.players.keys():
+            player = {**payload.player.dict(), "pmp": secrets.token_hex(16)}
+
+            match_repository.update(
+                self.db,
+                db_match.id,
+                {"players": {**db_match.players, payload.player.name: player}},
+            )
+
+            return JoinMatchResponse(pmp=player["pmp"])
+        elif db_match.players[payload.player.name] != payload.player.pmp:
+            raise JoinMatchException(code)
+
+        return JoinMatchResponse(pmp=payload.player.pmp)
+
+    def update(self, id: int, payload: UpdateMatchRequest):
+        db_match = self.get_by_id(id)
+
+        if payload.winner_id is not None and payload.winner_id not in [
             player_id for player_id in db_match.players
         ]:
             raise UpdateMatchException(
-                f"The player {match.winner_id} is not in the match"
+                f"The player {payload.winner_id} is not in the match"
             )
 
-        player = match.player.dict()
+        player = payload.player.dict()
 
-        if match.event == MatchUpdateEvent.PLAYER_JOIN:
-            if match.player.name in db_match.players.keys():
-                raise UpdateMatchException(
-                    f"The player {match.player.name} is already in the game"
-                )
-            else:
-                player = {**player, "pmp": secrets.token_hex(16)}
-
+        if (
+            payload.player.name not in db_match.players.keys()
+            or db_match.players[payload.player.name]["pmp"] != payload.player.pmp
+        ):
+            raise UpdateMatchException(f"You are not allowed to update this match")
         else:
-            if (
-                match.player.name not in db_match.players.keys()
-                or db_match.players[match.player.name]["pmp"] != match.player.pmp
-            ):
-                raise UpdateMatchException(
-                    f"You are not allowed to update this player state"
-                )
-            else:
-                player = {**db_match.players[match.player.name], **player}
+            player = {**db_match.players[payload.player.name], **player}
 
         updates = {
-            "state": {**db_match.state, **match.state},
-            "players": {**db_match.players, match.player.name: player},
-            "winner_id": match.winner_id,
+            "state": {**db_match.state, **payload.state},
+            "players": {**db_match.players, payload.player.name: player},
+            "winner_id": payload.winner_id,
+            "status": MatchStatus.PLAYING.value
+            if payload.status is None
+            else payload.status.value,
         }
 
-        updated = match_repository.update(self.db, db_match.id, updates)
+        if payload.status == "ENDED":
+            updates["end_date"] = datetime.now()
 
-        return UpdateMatchResponse(
-            code=updated.code,
-            state=updated.state,
-            pmp=player["pmp"] if match.event == MatchUpdateEvent.PLAYER_JOIN else "",
-        )
+        return match_repository.update(self.db, db_match.id, updates)
 
 
 def get_match_service(db: Session = Depends(get_db)):

@@ -50,6 +50,9 @@ class BroadcastConnectionManager:
                 self.active_connections.pop(room)
 
     async def broadcast(self, room: str, sender_id: str, message: Any):
+        if room not in self.active_connections.keys():
+            return
+
         for client_id, connection in self.active_connections[room].items():
             if sender_id != client_id:
                 await connection.send_json({"sender": sender_id, "content": message})

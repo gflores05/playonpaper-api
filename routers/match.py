@@ -1,16 +1,18 @@
+import json
 from fastapi import APIRouter, HTTPException, Depends, Request
 from connections.websockets import BroadcastConnectionManager, get_game_ws_manager
 
 from schemas.match import (
     CreateMatchRequest,
-    CreateMatchResponse,
+    JoinMatchRequest,
+    JoinMatchResponse,
     MatchUpdateEvent,
-    UpdateMatchResponse,
     UpdateMatchRequest,
     MatchResponse,
 )
 from services.match_service import (
     CreateMatchException,
+    JoinMatchException,
     MatchNotFoundException,
     MatchService,
     UpdateMatchException,
@@ -40,31 +42,56 @@ async def get_by_id(id: int, service: MatchService = Depends(get_match_service))
         raise HTTPException(status_code=404, detail=error.message)
 
 
-@router.post("/", response_model=CreateMatchResponse)
+@router.post("/", response_model=MatchResponse)
 def create(
-    match: CreateMatchRequest, service: MatchService = Depends(get_match_service)
+    payload: CreateMatchRequest, service: MatchService = Depends(get_match_service)
 ):
     try:
-        return service.create(match)
+        return service.create(payload)
     except CreateMatchException as error:
         raise HTTPException(status_code=400, detail=error.message)
 
 
-@router.patch("/{code}", response_model=UpdateMatchResponse)
+@router.patch("/{id}", response_model=MatchResponse)
 async def update(
-    code: str,
-    match: UpdateMatchRequest,
+    id: int,
+    payload: UpdateMatchRequest,
     service: MatchService = Depends(get_match_service),
     match_ws_manager: BroadcastConnectionManager = Depends(get_game_ws_manager),
 ):
     try:
-        updated = service.update(code, match)
+        updated = service.update(id, payload)
 
-        await match_ws_manager.broadcast_all(
+        await match_ws_manager.broadcast(
             updated.code,
-            {"event": MatchUpdateEvent.STATE_UPDATE.value, "data": updated.dict()},
+            payload.player.name,
+            {
+                "event": MatchUpdateEvent.STATE_UPDATE.value,
+                "data": json.loads(MatchResponse.from_orm(updated).json()),
+            },
         )
 
         return updated
     except UpdateMatchException as error:
         raise HTTPException(status_code=400, detail=error.message)
+
+
+@router.post("/{code}/join", response_model=JoinMatchResponse)
+async def join(
+    code: str,
+    payload: JoinMatchRequest,
+    service: MatchService = Depends(get_match_service),
+    match_ws_manager: BroadcastConnectionManager = Depends(get_game_ws_manager),
+):
+    try:
+        updated = service.join(code, payload)
+
+        await match_ws_manager.broadcast(
+            code,
+            payload.player.name,
+            {"event": MatchUpdateEvent.PLAYER_JOIN.value, "data": payload.player.name},
+        )
+
+        return updated
+    except JoinMatchException as error:
+        raise HTTPException(status_code=403, detail=error.message)

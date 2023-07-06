@@ -8,7 +8,7 @@ from .player import Player
 from .game import GameResponse
 
 
-class MatchPlayer(BaseModel):
+class MatchPlayerResponse(BaseModel):
     state: dict
     name: str
 
@@ -19,7 +19,7 @@ class MatchResponse(BaseModel):
     end_date: Optional[datetime]
     state: Optional[dict]
     status: str
-    players: Dict[str, MatchPlayer]
+    players: Dict[str, MatchPlayerResponse]
     code: str
     winner: Optional[Player]
     game: GameResponse
@@ -37,12 +37,6 @@ class MatchPlayerRequest(BaseModel):
 class CreateMatchRequest(BaseModel):
     state: dict
     game_id: int
-    challenger: MatchPlayerRequest
-
-
-class CreateMatchResponse(BaseModel):
-    code: str
-    pmp: str
 
 
 class MatchUpdateEvent(Enum):
@@ -51,15 +45,22 @@ class MatchUpdateEvent(Enum):
     PLAYER_JOIN = 3
 
 
+class MatchStatus(Enum):
+    WAITING = "WAITING"
+    PLAYING = "PLAYING"
+    ENDED = "ENDED"
+
+
 class UpdateMatchRequest(BaseModel):
     winner_id: Optional[int]
-    event: MatchUpdateEvent
-    status: Optional[str]
+    status: Optional[MatchStatus]
     player: MatchPlayerRequest
     state: dict
 
 
-class UpdateMatchResponse(BaseModel):
-    code: str
+class JoinMatchRequest(BaseModel):
+    player: MatchPlayerRequest
+
+
+class JoinMatchResponse(BaseModel):
     pmp: str
-    state: dict

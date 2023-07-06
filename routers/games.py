@@ -27,15 +27,19 @@ async def get_by_id(id: int, service: GameService = Depends(get_game_service)):
 
 
 @router.post("/", response_model=GameResponse)
-def create(game: CreateGameRequest, service: GameService = Depends(get_game_service)):
-    return service.create(game)
+def create(
+    payload: CreateGameRequest, service: GameService = Depends(get_game_service)
+):
+    return service.create(payload)
 
 
 @router.patch("/{id}", response_model=GameResponse)
 def update(
-    id: int, game: UpdateGameRequest, service: GameService = Depends(get_game_service)
+    id: int,
+    payload: UpdateGameRequest,
+    service: GameService = Depends(get_game_service),
 ):
     try:
-        return service.update(id, game)
+        return service.update(id, payload)
     except GameNotFoundException as error:
         raise HTTPException(status_code=404, detail=error.message)

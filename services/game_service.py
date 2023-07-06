@@ -52,18 +52,18 @@ class GameService:
     def find(self, **filter):
         return game_repository.find(self.db, **filter)
 
-    def create(self, game: CreateGameRequest):
-        return game_repository.create(self.db, game)
+    def create(self, payload: CreateGameRequest):
+        return game_repository.create(self.db, payload)
 
-    def update(self, id: int, game: UpdateGameRequest):
+    def update(self, id: int, payload: UpdateGameRequest):
         db_game = game_repository.get(self.db, id)
 
         if db_game is None:
             raise GameNotFoundException(id)
 
-        game.configuration = {**db_game.configuration, **game.configuration}
+        payload.configuration = {**db_game.configuration, **payload.configuration}
 
-        return game_repository.update(self.db, id, game)
+        return game_repository.update(self.db, id, payload)
 
 
 def get_game_service(db: Session = Depends(get_db)):

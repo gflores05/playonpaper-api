@@ -18,14 +18,13 @@ async def update_game_state(
 ):
     await match_ws_manager.connect(match_code, player, websocket)
     try:
-        await match_ws_manager.broadcast(
-            match_code,
-            player,
-            {"event": MatchUpdateEvent.PLAYER_JOIN.value, "data": {"player": player}},
-        )
+        # await match_ws_manager.broadcast(
+        #     match_code,
+        #     player,
+        #     {"event": MatchUpdateEvent.PLAYER_JOIN.value, "data": {"player": player}},
+        # )
         while True:
-            data = await websocket.receive_json()
-            print(f"received message : {data}")
+            await websocket.receive_json()
     except WebSocketDisconnect:
         match_ws_manager.disconnect(match_code, player)
         await match_ws_manager.broadcast(
