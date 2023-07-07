@@ -1,6 +1,7 @@
 import json
 from fastapi import APIRouter, HTTPException, Depends, Request
 from connections.websockets import BroadcastConnectionManager, get_game_ws_manager
+from models import Match
 
 from schemas.match import (
     CreateMatchRequest,
@@ -24,6 +25,10 @@ router = APIRouter(
     tags=["matches"],
     responses={404: {"description": "Not found"}},
 )
+
+
+def serializable_orm(model: Match):
+    return json.loads(MatchResponse.from_orm(model).json())
 
 
 @router.get("/", response_model=list[MatchResponse])
@@ -67,7 +72,7 @@ async def update(
             payload.player.name,
             {
                 "event": MatchUpdateEvent.STATE_UPDATE.value,
-                "data": json.loads(MatchResponse.from_orm(updated).json()),
+                "data": serializable_orm(updated),
             },
         )
 
@@ -84,7 +89,7 @@ async def join(
     match_ws_manager: BroadcastConnectionManager = Depends(get_game_ws_manager),
 ):
     try:
-        updated = service.join(code, payload)
+        result = service.join(code, payload)
 
         await match_ws_manager.broadcast(
             code,
@@ -92,6 +97,6 @@ async def join(
             {"event": MatchUpdateEvent.PLAYER_JOIN.value, "data": payload.player.name},
         )
 
-        return updated
+        return result
     except JoinMatchException as error:
         raise HTTPException(status_code=403, detail=error.message)
