@@ -66,19 +66,24 @@ class MatchService:
     def find(self, **filter):
         return match_repository.find(self.db, **filter)
 
+    def generate_code(self):
+        code_exists = True
+        code = ""
+        while code_exists:
+            code = secrets.token_urlsafe(8)
+            existing_match = match_repository.find(self.db, code=code)
+
+            code_exists = len(existing_match) > 0
+
+        return code
+
     def create(self, payload: CreateMatchRequest):
         game = game_repository.get(self.db, payload.game_id)
 
         if game is None:
             raise CreateMatchException(f"Game with id {payload.game_id} not found")
 
-        code_exists = True
-
-        while code_exists:
-            code = secrets.token_urlsafe(8)
-            existing_match = match_repository.find(self.db, code=code)
-
-            code_exists = len(existing_match) > 0
+        code = self.generate_code()
 
         new_match = {
             "game_id": payload.game_id,
