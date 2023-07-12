@@ -116,7 +116,7 @@ class MatchService:
             )
 
             return JoinMatchResponse(pmp=player["pmp"])
-        elif db_match.players[payload.player.name] != payload.player.pmp:
+        elif db_match.players[payload.player.name]["pmp"] != payload.player.pmp:
             raise JoinMatchException(code)
 
         return JoinMatchResponse(pmp=payload.player.pmp)
