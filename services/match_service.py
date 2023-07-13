@@ -139,7 +139,12 @@ class MatchService:
         ):
             raise UpdateMatchException(f"You are not allowed to update this match")
         else:
-            player = {**db_match.players[payload.player.name], **player}
+            db_player = db_match.players[payload.player.name]
+            player = {
+                **db_player,
+                **player,
+                "state": {**db_player["state"], **player["state"]},
+            }
 
         updates = {
             "state": {**db_match.state, **payload.state},
